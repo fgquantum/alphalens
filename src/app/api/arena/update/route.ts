@@ -206,6 +206,7 @@ async function closeSeasonAndStartNext(
             increment: prize,
           },
           arenaTier: nextTier,
+          hasFreeEntry: true, // Winner gets a free entry to the next arena!
         },
       });
 

@@ -20,6 +20,7 @@ model User {
   plan          String    @default("free")   // free | pro | elite
   realBalance   Float     @default(100.0)    // Virtual real cash wallet balance
   arenaTier     String    @default("Silver")  // Silver | Gold | Platinum | Diamond
+  hasFreeEntry  Boolean   @default(false)    // Whether user has a free entry earned from winning
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]

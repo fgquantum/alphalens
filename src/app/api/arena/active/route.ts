@@ -14,7 +14,7 @@ export async function GET() {
     // Fetch user details to get real wallet balance and current competitive tier
     const currentUser = await db.user.findUnique({
       where: { id: userId },
-      select: { realBalance: true, arenaTier: true }
+      select: { realBalance: true, arenaTier: true, hasFreeEntry: true }
     });
 
     if (!currentUser) {
@@ -101,6 +101,7 @@ export async function GET() {
       currentUser: {
         realBalance: currentUser.realBalance,
         arenaTier: currentUser.arenaTier,
+        hasFreeEntry: currentUser.hasFreeEntry,
       }
     });
   } catch (error: any) {

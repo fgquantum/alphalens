@@ -37,12 +37,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid tier specified' }, { status: 400 });
       }
 
+      const { freeEntry } = body as { freeEntry?: boolean };
+
       await db.user.update({
         where: { id: userId },
-        data: { arenaTier: tier },
+        data: { 
+          arenaTier: tier,
+          ...(freeEntry !== undefined ? { hasFreeEntry: freeEntry } : {}),
+        },
       });
 
-      return NextResponse.json({ success: true, message: `Successfully changed your arena tier to ${tier}` });
+      return NextResponse.json({ success: true, message: `Successfully changed your arena tier to ${tier}${freeEntry ? ' with Free Entry' : ''}` });
     }
 
     // ── ACTION: Seed Mock Ecosystem ──
@@ -174,6 +179,7 @@ export async function POST(req: NextRequest) {
         data: {
           realBalance: 100.0,
           arenaTier: 'Silver',
+          hasFreeEntry: false,
         },
       });
 

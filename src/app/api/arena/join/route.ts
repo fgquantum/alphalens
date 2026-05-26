@@ -10,6 +10,13 @@ const BUDGETS: Record<string, number> = {
   Diamond: 100000,
 };
 
+const ENTRY_FEES: Record<string, number> = {
+  Silver: 1.0,
+  Gold: 2.0,
+  Platinum: 3.0,
+  Diamond: 5.0,
+};
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -19,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id;
     const body = await req.json();
-    const { allocations } = body as { allocations: Record<string, number> };
+    const { allocations, tier } = body as { allocations: Record<string, number>; tier?: string };
 
     if (!allocations) {
       return NextResponse.json({ error: 'Allocations are required' }, { status: 400 });
@@ -47,8 +54,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    if (user.realBalance < 5.0) {
-      return NextResponse.json({ error: 'Insufficient wallet balance. You need at least 5.00€ to join.' }, { status: 403 });
+    // 3. Determine selected tier and fee
+    const targetTier = tier && ['Silver', 'Gold', 'Platinum', 'Diamond'].includes(tier) ? tier : (user.arenaTier || 'Silver');
+    
+    // Check if free entry applies (user has free entry and is joining their allowed tier)
+    const isFreeEntry = user.hasFreeEntry && targetTier === user.arenaTier;
+    const requiredFee = isFreeEntry ? 0.0 : (ENTRY_FEES[targetTier] || 1.0);
+
+    if (user.realBalance < requiredFee) {
+      return NextResponse.json({ error: `Insufficient wallet balance. You need at least ${requiredFee.toFixed(2)}€ to join this arena.` }, { status: 403 });
     }
 
     // Find active season
@@ -72,7 +86,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'You have already joined this season.' }, { status: 409 });
     }
 
-    // 3. Fetch entry prices for all 5 tickers
+    // 4. Fetch entry prices for all 5 tickers
     const entryPrices: Record<string, number> = {};
     for (const symbol of tickers) {
       try {
@@ -84,18 +98,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const tier = user.arenaTier || 'Silver';
-    const budget = BUDGETS[tier] || 10000;
+    const budget = BUDGETS[targetTier] || 10000;
 
-    // Start a transaction: deduct 5€, create participant, create initial daily performance record
+    // Start a transaction: deduct fee, consume free entry, create participant
     await db.$transaction(async (tx) => {
-      // Deduct fee
+      // Deduct fee and update user tier/free entry status
       await tx.user.update({
         where: { id: userId },
         data: {
           realBalance: {
-            decrement: 5.0,
+            decrement: requiredFee,
           },
+          arenaTier: targetTier,
+          ...(isFreeEntry ? { hasFreeEntry: false } : {}),
         },
       });
 
@@ -104,7 +119,7 @@ export async function POST(req: NextRequest) {
         data: {
           seasonId: activeSeason.id,
           userId: userId,
-          tier: tier,
+          tier: targetTier,
           budget: budget,
           tickers: tickers.join(','),
           allocationsJSON: JSON.stringify(allocations),

@@ -56,6 +56,7 @@ interface UserEntry {
 interface CurrentUser {
   realBalance: number;
   arenaTier: string;
+  hasFreeEntry: boolean;
 }
 
 const TIER_BUDGETS: Record<string, number> = {
@@ -93,6 +94,7 @@ export default function ArenaPage() {
   const [activeStandingsTab, setActiveStandingsTab] = useState<'Silver' | 'Gold' | 'Platinum' | 'Diamond'>('Silver');
 
   // Registration Pick State
+  const [selectedRegTier, setSelectedRegTier] = useState<'Silver' | 'Gold' | 'Platinum' | 'Diamond'>('Silver');
   const [selectedStocks, setSelectedStocks] = useState<string[]>([]);
   const [allocations, setAllocations] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -116,6 +118,7 @@ export default function ArenaPage() {
       // Auto-set the standings tab to match the user's current tier
       if (data.currentUser && !silent) {
         setActiveStandingsTab(data.currentUser.arenaTier as any);
+        setSelectedRegTier(data.currentUser.arenaTier as any);
       }
     } catch (e: any) {
       console.error('Failed to load arena active state:', e);
@@ -214,7 +217,7 @@ export default function ArenaPage() {
       const res = await fetch('/api/arena/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ allocations }),
+        body: JSON.stringify({ allocations, tier: selectedRegTier }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to join');
@@ -335,6 +338,28 @@ export default function ArenaPage() {
             </button>
           ))}
 
+          <button onClick={async () => {
+            if (!currentUser) return;
+            setActionLoading(true);
+            try {
+              const res = await fetch('/api/arena/sandbox', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'promote', tier: currentUser.arenaTier, freeEntry: !currentUser.hasFreeEntry }),
+              });
+              const data = await res.json();
+              setSandboxLog(data.message);
+              await fetchState(true);
+            } catch (e: any) {
+              setSandboxLog(`Sandbox Error: ${e.message}`);
+            } finally {
+              setActionLoading(false);
+            }
+          }} disabled={actionLoading}
+            className="obs-btn !py-1 !px-2.5 !text-[9px] hover:!bg-accent/15 hover:!border-accent/30 !text-accent shrink-0">
+            {currentUser?.hasFreeEntry ? '🎫 Revoke Free Entry' : '🎫 Award Free Entry'}
+          </button>
+
           <div className="h-4 w-[1px] bg-white/10 mx-1" />
 
           <button onClick={() => triggerDailyUpdate(false)} disabled={actionLoading}
@@ -375,8 +400,8 @@ export default function ArenaPage() {
               )}
             </div>
             <p className="text-muted text-xs mt-2 leading-relaxed max-w-2xl">
-              Pay the <strong className="text-foreground">5€ entry fee</strong>, select 5 tickers, and allocate your arena budget. 
-              Top daily pickers secure promotions and **real cash prizes**! Worst pickers drop a tier.
+              Select 5 tickers and allocate your arena budget. Join Silver (1€), Gold (2€), Platinum (3€), or Diamond (5€).
+              Winners earn **free entry** to the next arena tier and **real cash prizes**!
             </p>
           </div>
 
@@ -399,6 +424,11 @@ export default function ArenaPage() {
                 <Coins className="w-4 h-4 text-accent" />
                 {currentUser?.realBalance?.toFixed(2)}€
               </div>
+              {currentUser?.hasFreeEntry && (
+                <div className="text-[8px] font-bold text-accent bg-accent/10 border border-accent/20 px-1.5 py-0.5 rounded mt-1.5 text-center tracking-wider animate-pulse">
+                  🎫 FREE ENTRY EARNED
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -530,9 +560,42 @@ export default function ArenaPage() {
                 <Swords className="w-4 h-4 text-accent" />
                 <span className="obs-label text-[10px] tracking-wider text-foreground">REGISTER FOR SEASON</span>
               </div>
+              
+              {/* Select Arena Tier to Join */}
+              <div className="space-y-1.5">
+                <label className="obs-label text-[8px] text-muted-2">CHOOSE ARENA TIER</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['Silver', 'Gold', 'Platinum', 'Diamond'] as const).map(tier => {
+                    const isAllowedTier = currentUser?.arenaTier === tier;
+                    const isFree = currentUser?.hasFreeEntry && isAllowedTier;
+                    const fee = isFree ? 'Free' : (tier === 'Silver' ? '1€' : tier === 'Gold' ? '2€' : tier === 'Platinum' ? '3€' : '5€');
+                    return (
+                      <button
+                        key={tier}
+                        onClick={() => setSelectedRegTier(tier)}
+                        className="px-2.5 py-2 rounded-xl font-mono text-left text-xs transition-all flex flex-col justify-between border cursor-pointer hover:bg-surface-2/30 text-foreground"
+                        style={{
+                          borderColor: selectedRegTier === tier ? TIER_COLORS[tier] : 'rgba(255,255,255,0.06)',
+                          background: selectedRegTier === tier ? 'rgba(255,255,255,0.02)' : 'transparent',
+                        }}
+                      >
+                        <span className="font-bold flex items-center gap-1">
+                          {tier}
+                          {isAllowedTier && (
+                            <span className="text-[7px] bg-white/5 border border-white/10 px-1 rounded">Rank</span>
+                          )}
+                        </span>
+                        <span className="text-[10px] text-muted-2 mt-1">
+                          Fee: <strong style={{ color: isFree ? '#00D97E' : 'var(--color-foreground)' }}>{fee}</strong> · Budget: {TIER_BUDGETS[tier]?.toLocaleString()}€
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <p className="text-xs text-muted-2 leading-relaxed">
-                Unlock your budget of **{TIER_BUDGETS[currentUser?.arenaTier || 'Silver']?.toLocaleString()}€** in the {currentUser?.arenaTier} Arena. 
-                Select exactly 5 tickers and distribute your allocation.
+                Unlock a budget of <strong className="text-foreground">{TIER_BUDGETS[selectedRegTier]?.toLocaleString()}€</strong> inside the <strong style={{ color: TIER_COLORS[selectedRegTier] }}>{selectedRegTier}</strong> Arena.
               </p>
 
               {/* Stock Selector Search */}
@@ -614,18 +677,25 @@ export default function ArenaPage() {
               <div className="pt-2">
                 {regError && <div className="text-[10px] text-bear font-mono mb-2">{regError}</div>}
                 
-                <button
-                  onClick={handleJoinArena}
-                  disabled={selectedStocks.length !== 5 || totalAllocated !== 100 || actionLoading}
-                  className="w-full py-3 text-center uppercase tracking-widest font-bold text-xs transition-all rounded-xl border-none font-display flex items-center justify-center gap-2"
-                  style={{
-                    background: (selectedStocks.length === 5 && totalAllocated === 100) ? '#00D97E' : 'rgba(255,255,255,0.04)',
-                    color: (selectedStocks.length === 5 && totalAllocated === 100) ? '#070910' : 'var(--color-muted)',
-                    cursor: (selectedStocks.length === 5 && totalAllocated === 100) ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  <Coins className="w-3.5 h-3.5" /> PAY 5€ ENTRY & CONFIRM PICKS
-                </button>
+                {(() => {
+                  const REG_FEES = { Silver: 1, Gold: 2, Platinum: 3, Diamond: 5 };
+                  const isFree = currentUser?.hasFreeEntry && selectedRegTier === currentUser?.arenaTier;
+                  const feeText = isFree ? '0.00€ (FREE ENTRY!)' : `${REG_FEES[selectedRegTier]?.toFixed(2)}€`;
+                  return (
+                    <button
+                      onClick={handleJoinArena}
+                      disabled={selectedStocks.length !== 5 || totalAllocated !== 100 || actionLoading}
+                      className="w-full py-3 text-center uppercase tracking-widest font-bold text-xs transition-all rounded-xl border-none font-display flex items-center justify-center gap-2"
+                      style={{
+                        background: (selectedStocks.length === 5 && totalAllocated === 100) ? '#00D97E' : 'rgba(255,255,255,0.04)',
+                        color: (selectedStocks.length === 5 && totalAllocated === 100) ? '#070910' : 'var(--color-muted)',
+                        cursor: (selectedStocks.length === 5 && totalAllocated === 100) ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      <Coins className="w-3.5 h-3.5" /> PAY {feeText} & CONFIRM PICKS
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           ) : (

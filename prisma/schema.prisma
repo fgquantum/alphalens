@@ -18,6 +18,8 @@ model User {
   image         String?
   role          String    @default("USER")   // USER | ADMIN
   plan          String    @default("free")   // free | pro | elite
+  realBalance   Float     @default(100.0)    // Virtual real cash wallet balance
+  arenaTier     String    @default("Silver")  // Silver | Gold | Platinum | Diamond
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
@@ -25,6 +27,7 @@ model User {
   watchlist     WatchlistItem[]
   alerts        Alert[]
   votes         Vote[]
+  arenaEntries  ArenaParticipant[]
 }
 
 model WatchlistItem {
@@ -88,6 +91,7 @@ model Session {
 }
 
 model VerificationToken {
+  id         String   @id @default(cuid()) // SQLite Cuid key placeholder for vToken uniqueness if needed
   identifier String
   token      String   @unique
   expires    DateTime
@@ -108,5 +112,50 @@ model SystemLog {
   action    String?  // user_delete | setting_change | sql_query | login
   userId    String?
   createdAt DateTime @default(now())
+}
+
+model ArenaSeason {
+  id           String             @id @default(cuid())
+  seasonNumber Int                @unique
+  startDate    DateTime
+  endDate      DateTime
+  isActive     Boolean            @default(false)
+  isCompleted  Boolean            @default(false)
+  winnerId     String?
+  createdAt    DateTime           @default(now())
+  participants ArenaParticipant[]
+}
+
+model ArenaParticipant {
+  id               String                  @id @default(cuid())
+  seasonId         String
+  userId           String
+  tier             String                  // Silver | Gold | Platinum | Diamond
+  budget           Float                   // Starting budget
+  tickers          String                  // Comma-separated list of selected tickers
+  allocationsJSON  String                  // JSON mapping of tickers to allocated percentage (e.g. {"AAPL":20,"NVDA":30...})
+  entryPricesJSON  String                  // JSON mapping of starting prices
+  currentPricesJSON String                 // JSON mapping of current prices
+  hasPaid          Boolean                 @default(false)
+  portfolioValue   Float                   @default(0.0)
+  avgReturnPct     Float                   @default(0.0)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  season           ArenaSeason             @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyHistory     ArenaDailyPerformance[]
+
+  @@unique([seasonId, userId])
+}
+
+model ArenaDailyPerformance {
+  id             String           @id @default(cuid())
+  participantId  String
+  date           DateTime         @default(now())
+  portfolioValue Float
+  avgReturnPct   Float
+
+  participant    ArenaParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 }
 

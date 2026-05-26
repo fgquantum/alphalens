@@ -281,20 +281,30 @@ export default function StockPage() {
           {/* Constellation */}
           <div className="pt-3 border-t border-white/[0.06]">
             <div className="obs-label mb-2">12-ALGORITHM CONSTELLATION <span className="text-muted-2 text-[8px]">orbits by kind</span></div>
-            <div className="scale-75 origin-top-left" style={{ height: 320 }}>
-              <Constellation score={alphaScore.overall} algos={[
-                { id: 'eqs', name: 'EQS™', value: eqs?.eqs || 0, unit: '/100', color: 'green', kind: 'qual' },
-                { id: 'smi', name: 'SMI™', value: smi?.smi || 0, unit: '/100', color: 'green', kind: 'flow' },
-                { id: 'cer', name: 'CER™', value: cer?.cer || 0, unit: '/100', color: 'gold', kind: 'qual' },
-                { id: 'pio', name: 'Piotroski F', value: data.piotroski?.score || 0, unit: '/9', color: 'green', kind: 'qual' },
-                { id: 'tsi', name: 'TSI™', value: trendStrength?.tsi || 0, unit: '/100', color: 'green', kind: 'mom' },
-                { id: 'momo', name: 'AlphaMom™', value: alphaMomentum?.rank || 0, unit: ' pct', color: 'green', kind: 'mom' },
-                { id: 'vol', name: 'Vol Regime™', value: volRegime?.volRegime || 'NORMAL', unit: '', color: 'gold', kind: 'risk' },
-                { id: 'earn', name: 'Earn Mom™', value: earningsMomentum?.earnMomentum || 0, unit: '/100', color: 'green', kind: 'mom' },
-                { id: 'ben', name: 'Beneish M', value: eqs?.mScore || 0, unit: '', color: eqs?.flags?.beneish ? 'red' : 'green', kind: 'qual' },
-                { id: 'mac', name: 'Macro Regime', value: 'LATE-CYCLE', unit: '', color: 'blue', kind: 'macro' },
-                { id: 'edge', name: 'Edge Score', value: edgeScore.toFixed(2), unit: '', color: 'purple', kind: 'core' },
-              ]} />
+            <div className="relative overflow-visible" style={{ width: '240px', height: '240px' }}>
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '420px',
+                height: '420px',
+                transform: 'scale(0.57)',
+                transformOrigin: 'top left'
+              }}>
+                <Constellation score={alphaScore.overall} algos={[
+                  { id: 'eqs', name: 'EQS™', value: eqs?.eqs || 0, unit: '/100', color: 'green', kind: 'qual' },
+                  { id: 'smi', name: 'SMI™', value: smi?.smi || 0, unit: '/100', color: 'green', kind: 'flow' },
+                  { id: 'cer', name: 'CER™', value: cer?.cer || 0, unit: '/100', color: 'gold', kind: 'qual' },
+                  { id: 'pio', name: 'Piotroski F', value: data.piotroski?.score || 0, unit: '/9', color: 'green', kind: 'qual' },
+                  { id: 'tsi', name: 'TSI™', value: trendStrength?.tsi || 0, unit: '/100', color: 'green', kind: 'mom' },
+                  { id: 'momo', name: 'AlphaMom™', value: alphaMomentum?.rank || 0, unit: ' pct', color: 'green', kind: 'mom' },
+                  { id: 'vol', name: 'Vol Regime™', value: volRegime?.volRegime || 'NORMAL', unit: '', color: 'gold', kind: 'risk' },
+                  { id: 'earn', name: 'Earn Mom™', value: earningsMomentum?.earnMomentum || 0, unit: '/100', color: 'green', kind: 'mom' },
+                  { id: 'ben', name: 'Beneish M', value: eqs?.mScore || 0, unit: '', color: eqs?.flags?.beneish ? 'red' : 'green', kind: 'qual' },
+                  { id: 'mac', name: 'Macro Regime', value: 'LATE-CYCLE', unit: '', color: 'blue', kind: 'macro' },
+                  { id: 'edge', name: 'Edge Score', value: edgeScore.toFixed(2), unit: '', color: 'purple', kind: 'core' },
+                ]} />
+              </div>
             </div>
           </div>
         </div>
